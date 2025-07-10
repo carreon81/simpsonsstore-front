@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Simpsons Shop - Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .product-container {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .product-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 280px;
+            object-fit: contain;
+            display: block;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .product-info {
+            padding: 0px 4px 0px 62px;
+            margin-top: -12px;
+        }
+
+        .product-name {
+            font-weight: 50;
+            font-size: 1.03rem;
+            color: #111;
+            line-height: 1.2;
+            margin: 0 0 4px 0;
+        }
+
+        .product-price {
+            font-weight: 400;
+            font-size: 0.95rem;
+            color: #555;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 8px;
+        }
+        .navbar { 
+            margin-bottom: 1rem; 
+        }
+        #header-placeholder {
+            margin-bottom: 150px; /* Espacio para el header */
+        }
+        footer{
+            padding: 30px;
+            color: #222 !important;
+            font-weight: 300 !important;
+            font-size: 12px !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container mt-4">
+        <div class="row" id="productList">
+            <!-- Productos cargados dinámicamente -->
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        fetch('header.html')
+            .then(response => response.text())
+            .then(data => document.getElementById('header-placeholder').innerHTML = data);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('http://localhost:8081/productos')
+                .then(response => response.json())
+                .then(data => {
+                    const productList = document.getElementById('productList');
+                    data.forEach(product => {
+                        const col = document.createElement('div');
+                        col.className = 'col-6 col-md-4 col-lg-3 mb-4';
+                        col.innerHTML = `
+                            <div class="product-container" onclick="window.location='detalle.html?id=${product.id}'">
+                                <img src="${product.imageUrl}" alt="${product.name}" class="product-image">
+                                <div class="product-info">
+                                    <div class="product-name lead">${product.name}</div>
+                                    <div class="product-price">$${product.precio.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        `;
+                        productList.appendChild(col);
+                    });
+                });
+        });
+    </script>
+    <footer class="text-center small mt-5 mb-3">
+        2025 Emmanuel Carreón | carreonmail@gmail.com | +54 9 11 1234 5678
+    </footer>
+</body>
+</html>

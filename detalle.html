@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detalle del Producto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Helvetica Neue', 'Inter', sans-serif;
+            background-color: #fff;
+            color: #222;
+            line-height: 1.4;
+        }
+        .main { 
+            max-width: 900px; 
+            padding: 0 16px; 
+        }
+        .product-detail { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 40px; 
+            align-items: flex-start; 
+        }
+        p { 
+            text-transform: uppercase; font-size: 0.8rem; 
+        }
+        .product-info { 
+            flex: 1 1 300px; max-width: 400px; width: 100%; 
+        }
+        .lead { 
+            font-size: 2.25rem !important; 
+        }
+        .sub { 
+            font-weight: 200; 
+        }
+        .bigPrice { 
+            font-size: 2.5rem; 
+            font-weight: 100; 
+            margin-top: 16px; 
+            margin-bottom: 0; 
+        }
+        .btnBuy { 
+            border-radius: 25px;
+            width: 160px;
+            background-color: color(display-p3 0.9576 0.8069 0.2704);
+            border: none;
+            margin-top: 30px;
+        }
+        .btnBuy:hover { 
+            background-color: color(display-p3 0.9576 0.8069 0.2704); 
+            opacity: 0.8; 
+        }
+        .inputCantidad { 
+            width: 80px; 
+        }
+        .form-label { 
+            margin-bottom: .5rem;
+            font-weight: 300;
+            font-size: 12px;
+            width: 99px;
+        }
+        #header-placeholder {
+            margin-bottom: 150px; /* Espacio para el header */
+        }
+        footer{
+            padding: 30px;
+            color: #222 !important;
+            font-weight: 300 !important;
+            font-size: 12px !important;
+        }
+        @media (max-width: 768px) {
+            .product-detail { flex-direction: column; align-items: center; text-align: center; }
+            .product-info { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container main">
+        <div class="row" id="product-detail">
+            <!-- Contenido dinámico -->
+        </div>
+    </div>
+
+    <script>
+        fetch('header.html')
+            .then(response => response.text())
+            .then(data => document.getElementById('header-placeholder').innerHTML = data);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const productId = params.get('id');
+            if (!productId) {
+                document.getElementById('product-detail').innerHTML = '<p>Producto no encontrado.</p>';
+                return;
+            }
+
+            try {
+                const res = await fetch(`http://localhost:8081/productos/${productId}`);
+                const producto = await res.json();
+
+                const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+                const existente = carrito.find(item => item.productoId === producto.id);
+                const cantidadEnCarrito = existente ? existente.cantidad : 0;
+
+                let stockDisponible = producto.stock - cantidadEnCarrito;
+                if (stockDisponible < 0) stockDisponible = 0;
+
+                document.getElementById('product-detail').innerHTML = `
+                    <div class="col-md-6">
+                        <img src="${producto.imageUrl}" alt="${producto.name}" class="img-fluid rounded" />
+                    </div>
+                    <div class="col-md-6 d-flex flex-column justify-content-center">
+                        <h2 class="lead">${producto.name}</h2>
+                        <p class="sub">${producto.description}</p>
+                        <p class="bigPrice">$${producto.precio.toFixed(2)}</p>
+                        <p><strong>Stock disponible:</strong> <span id="stockDisponible">${stockDisponible}</span></p>
+
+                        <div class="mb-3 d-flex  align-items-center gap-2 flex-wrap" id="addToCartSection" style="${stockDisponible <= 0 ? 'display:none;' : ''}">
+                            <label for="cantidad" class="form-label mb-0 order-2">Cantidad a agregar al carrito</label>
+                            <input type="number" id="cantidad" class="form-control inputCantidad order-1" min="1" max="${stockDisponible}" value="1">
+                        </div>
+
+                        <button id="add-to-cart" class="btn btn-primary btnBuy" style="${stockDisponible <= 0 ? 'display:none;' : ''}">Agregar al carrito</button>
+                        <div id="mensaje" class="mt-2"></div>
+                        ${stockDisponible <= 0 ? '<div class="alert alert-warning mt-2">Sin stock disponible.</div>' : ''}
+                    </div>
+                `;
+
+                if (stockDisponible > 0) {
+                    document.getElementById('add-to-cart').addEventListener('click', () => {
+                        const cantidad = parseInt(document.getElementById('cantidad').value);
+                        const stockElement = document.getElementById('stockDisponible');
+                        let stockActual = parseInt(stockElement.textContent);
+
+                        if (cantidad > stockActual || cantidad <= 0) {
+                            document.getElementById('mensaje').innerHTML = '<div class="alert alert-danger">Cantidad inválida o sin stock disponible.</div>';
+                            return;
+                        }
+
+                        const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+                        const existente = carrito.find(item => item.productoId === producto.id);
+
+                        if (existente) {
+                            if (existente.cantidad + cantidad > producto.stock) {
+                                document.getElementById('mensaje').innerHTML = '<div class="alert alert-danger">No hay suficiente stock disponible.</div>';
+                                return;
+                            }
+                            existente.cantidad += cantidad;
+                        } else {
+                            carrito.push({ productoId: producto.id, cantidad });
+                        }
+                        localStorage.setItem('carrito', JSON.stringify(carrito));
+
+                        stockActual -= cantidad;
+                        stockElement.textContent = stockActual;
+
+                        document.getElementById('mensaje').innerHTML = '<div class="alert alert-success">Producto agregado al carrito.</div>';
+
+                        if (stockActual <= 0) {
+                            document.getElementById('add-to-cart').style.display = 'none';
+                            document.getElementById('addToCartSection').style.display = 'none';
+                            const warning = document.createElement('div');
+                            warning.className = 'alert alert-warning mt-2';
+                            warning.textContent = 'Sin stock disponible.';
+                            document.querySelector('.col-md-6.d-flex').appendChild(warning);
+                        }
+
+                        setTimeout(() => {
+                            window.location.href = "index.html";
+                        }, 1500);
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('product-detail').innerHTML = '<p>Error al cargar el producto.</p>';
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <footer class="text-center small mt-5 mb-3">
+        2025 Emmanuel Carreón | carreonmail@gmail.com | +54 9 11 1234 5678
+    </footer>
+</body>
+</html>

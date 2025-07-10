@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <title>Administrar Productos - Simpsons Shop</title>
+  <style>
+        #header-placeholder {
+            margin-bottom: 150px; /* Espacio para el header */
+        }
+        h2{
+            font-size: 1.5rem;
+            margin-top: 90px;
+            margin-bottom: 25px;
+            font-weight: 200 !important;
+        }
+        footer{
+            padding: 30px;
+            color: #222 !important;
+            font-weight: 300 !important;
+            font-size: 12px !important;
+        }
+        body {
+           max-width: 820px;
+           margin: 0 auto;
+        }
+        button{
+            border-radius: 25px !important;
+        }
+        #productTableBody button{
+            min-width: 95px;
+        }
+  </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="container mt-4">
+        <h2>Agregar Producto</h2>
+        <hr>
+        <!-- Formulario de agregar producto -->
+        <form id="addProductForm" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <input type="text" class="form-control" id="name" placeholder="Nombre del producto" required>
+        </div>
+        <div class="col-md-2">
+            <input type="number" class="form-control" id="precio" placeholder="Precio" step="0.01" required>
+        </div>
+        <div class="col-md-2">
+            <input type="number" class="form-control" id="stock" placeholder="Stock" step="0.01" required>
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control" id="imageUrl" placeholder="URL de la imagen" required>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Agregar</button>
+        </div>
+        </form>
+        <h2>Administrar Productos</h2>
+        <hr>
+        <!-- Tabla de productos -->
+        <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+            <th>Imagen</th>
+            <th>Nombre</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="productTableBody">
+            <!-- Productos cargados dinámicamente -->
+        </tbody>
+        </table>
+        <h2>Administrar Pedidos</h2>
+        <hr>
+        <table class="table table-striped align-middle mt-3">
+        <thead>
+            <tr>
+            <th>ID Pedido</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="pedidosTableBody"></tbody>
+        </table>
+        <div id="mensajePedidos" class="mt-2"></div>
+    </div>
+    <!-- Modal de Edición -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+        <form id="editProductForm">
+            <div class="modal-header">
+            <h5 class="modal-title">Editar Producto</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+            <div class="text-center mb-3">
+                <img id="editImagePreview" src="" alt="Preview" style="max-height: 200px; transition: opacity 0.3s;">
+            </div>
+            <input type="hidden" id="editId">
+            <div class="mb-2">
+                <label class="form-label">Nombre</label>
+                <input type="text" class="form-control" id="editName" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Precio</label>
+                <input type="number" class="form-control" id="editPrecio"  step="0.01" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Stock</label>
+                <input type="number" class="form-control" id="editStock"  step="0.01" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">URL de la Imagen</label>
+                <input type="text" class="form-control" id="editImageUrl" required>
+            </div>
+            <div id="editSuccess" class="alert alert-success d-none mt-2" role="alert">
+                Producto actualizado correctamente.
+            </div>
+            </div>
+            <div class="modal-footer">
+            <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+            </div>
+        </form>
+        </div>
+    </div>
+    <hr class="my-5">
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+
+        fetch('header.html')
+            .then(response => response.text())
+            .then(data => document.getElementById('header-placeholder').innerHTML = data);
+
+        const API_URL = 'http://localhost:8081/productos';
+
+        const productTableBody = document.getElementById('productTableBody');
+        const addProductForm = document.getElementById('addProductForm');
+
+        // Modal & Form
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        const editProductForm = document.getElementById('editProductForm');
+        const editId = document.getElementById('editId');
+        const editName = document.getElementById('editName');
+        const editPrecio = document.getElementById('editPrecio');
+        const editStock = document.getElementById('editStock');
+        const editImageUrl = document.getElementById('editImageUrl');
+        const editImagePreview = document.getElementById('editImagePreview');
+        const editSuccess = document.getElementById('editSuccess');
+
+        function cargarProductos() {
+        fetch(API_URL)
+            .then(response => response.json())
+            .then(data => {
+            productTableBody.innerHTML = '';
+            data.forEach(product => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td><img src="${product.imageUrl}" alt="${product.name}" style="height: 60px; object-fit: contain;"></td>
+                <td>${product.name}</td>
+                <td>$${product.precio.toFixed(2)}</td>
+                <td>${product.stock}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="abrirEditarProducto(${product.id})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarProducto(${product.id})">Eliminar</button>
+                </td>
+                `;
+                productTableBody.appendChild(tr);
+            });
+            });
+        }
+
+        addProductForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newProduct = {
+            name: document.getElementById('name').value,
+            precio: parseFloat(document.getElementById('precio').value),
+            stock: parseInt(document.getElementById('stock').value),
+            imageUrl: document.getElementById('imageUrl').value
+        };
+
+        fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newProduct)
+        })
+        .then(() => {
+            addProductForm.reset();
+            cargarProductos();
+        });
+        });
+
+        function eliminarProducto(id) {
+        if (confirm('¿Está seguro de eliminar este producto?')) {
+            fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+            .then(() => cargarProductos());
+        }
+        }
+
+        function abrirEditarProducto(id) {
+        fetch(`${API_URL}/${id}`)
+            .then(response => response.json())
+            .then(product => {
+            editId.value = product.id;
+            editName.value = product.name;
+            editPrecio.value = product.precio;
+            editStock.value = product.stock;
+            editImageUrl.value = product.imageUrl;
+            editImagePreview.src = product.imageUrl;
+            editSuccess.classList.add('d-none');
+            editModal.show();
+            });
+        }
+
+        // Actualizar imagen con animación al cambiar URL
+        editImageUrl.addEventListener('input', () => {
+        editImagePreview.style.opacity = 0;
+        setTimeout(() => {
+            editImagePreview.src = editImageUrl.value;
+            editImagePreview.style.opacity = 1;
+        }, 200);
+        });
+
+        // Guardar cambios
+        editProductForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = editId.value;
+        const updatedProduct = {
+            name: editName.value,
+            precio: parseFloat(editPrecio.value),
+            stock: parseInt(editStock.value),
+            imageUrl: editImageUrl.value
+        };
+
+        fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedProduct)
+        })
+        .then(() => {
+            editSuccess.classList.remove('d-none');
+            cargarProductos();
+            setTimeout(() => {
+            editModal.hide();
+            }, 1200);
+        });
+        });
+
+        document.addEventListener('DOMContentLoaded', cargarProductos);
+        const PEDIDOS_URL = 'http://localhost:8081/pedidos';
+        const PRODUCTOS_URL = 'http://localhost:8081/productos';
+        const pedidosTableBody = document.getElementById('pedidosTableBody');
+        const mensajePedidos = document.getElementById('mensajePedidos');
+
+        async function cargarPedidos() {
+            try {
+                const res = await fetch(PEDIDOS_URL);
+                const pedidos = await res.json();
+                pedidosTableBody.innerHTML = '';
+
+                pedidos.forEach(pedido => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${pedido.id}</td>
+                        <td>${new Date(pedido.fecha).toLocaleString()}</td>
+                        <td>$${pedido.total.toFixed(2)}</td>
+                        <td>${pedido.estado}</td>
+                        <td id="acciones-pedido-${pedido.id}"></td>
+                    `;
+                    pedidosTableBody.appendChild(tr);
+
+                    const accionesCelda = document.getElementById(`acciones-pedido-${pedido.id}`);
+                    if (pedido.estado !== 'Cancelado' && pedido.estado !== 'Aprobado') {
+                        const aprobarBtn = document.createElement('button');
+                        aprobarBtn.className = 'btn btn-success btn-sm me-1';
+                        aprobarBtn.textContent = 'Aprobar';
+                        aprobarBtn.addEventListener('click', () => actualizarEstadoPedido(pedido.id, 'Aprobado'));
+                        accionesCelda.appendChild(aprobarBtn);
+
+                        const cancelarBtn = document.createElement('button');
+                        cancelarBtn.className = 'btn btn-danger btn-sm';
+                        cancelarBtn.textContent = 'Cancelar';
+                        cancelarBtn.addEventListener('click', () => cancelarPedido(pedido));
+                        accionesCelda.appendChild(cancelarBtn);
+                    } else {
+                        accionesCelda.textContent = '-';
+                    }
+                });
+            } catch (error) {
+                console.error(error);
+                mensajePedidos.innerHTML = '<div class="alert alert-danger">Error al cargar los pedidos.</div>';
+            }
+        }
+
+        async function actualizarEstadoPedido(pedidoId, nuevoEstado) {
+            try {
+                const res = await fetch(`${PEDIDOS_URL}/${pedidoId}/aprobar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+                if (res.ok) {
+                    mensajePedidos.innerHTML = '<div class="alert alert-success">Estado del pedido actualizado correctamente.</div>';
+                    cargarPedidos();
+                } else {
+                    mensajePedidos.innerHTML = '<div class="alert alert-danger">No se pudo actualizar el estado del pedido.</div>';
+                }
+            } catch (error) {
+                console.error(error);
+                mensajePedidos.innerHTML = '<div class="alert alert-danger">Error al conectar con el servidor.</div>';
+            }
+        }
+
+        async function cancelarPedido(pedido) {
+            if (!confirm('¿Estás seguro de cancelar este pedido? Se restaurará el stock.')) return;
+            try {
+                const res = await fetch(`${PEDIDOS_URL}/${pedido.id}/cancelar`, { method: 'PUT' });
+                if (res.ok) {
+                    mensajePedidos.innerHTML = '<div class="alert alert-success">Pedido cancelado y stock restaurado correctamente.</div>';
+                    cargarPedidos();
+                } else {
+                    mensajePedidos.innerHTML = '<div class="alert alert-danger">No se pudo cancelar el pedido.</div>';
+                }
+            } catch (error) {
+                console.error(error);
+                mensajePedidos.innerHTML = '<div class="alert alert-danger">Error al conectar con el servidor.</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarPedidos);
+
+    </script>
+
+    <footer class="text-center small mt-5 mb-3">
+        2025 Emmanuel Carreón | carreonmail@gmail.com | +54 9 11 1234 5678
+    </footer>
+</body>
+</html>
