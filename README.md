@@ -66,7 +66,7 @@ Conexión a internet para cargar imágenes externas
 
 👨‍💻 Autor
 
-Desarrollado por Emmanuel Carreón como parte del curso Talento Tech.
+Desarrollado por Emmanuel Carreón.
 
 📄 Licencia
 
